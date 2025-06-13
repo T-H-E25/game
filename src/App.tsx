@@ -6,6 +6,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import { useGameLogic } from './hooks/useGameLogic';
 import { useTargetSpawner } from './hooks/useTargetSpawner';
 import { useSoundEffects } from './hooks/useSoundEffects';
+import { useAuth } from './hooks/useAuth';
 import './App.css';
 
 type UserType = 'free' | 'member' | null;
@@ -26,6 +27,8 @@ function App() {
   const targetCacheRef = useRef<Array<{id: string, x: number, y: number, radius: number}>>([]);
   const lastProximityCheck = useRef<number>(0);
   
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
+
   const {
     score,
     timeLeft,
@@ -45,15 +48,24 @@ function App() {
   const { playShootSound, playHitSound, playMissSound } = useSoundEffects();
 
   useEffect(() => {
+    // Don't check localStorage while auth is loading
+    if (authLoading) return;
+
     // Check if user has visited before
     const hasVisited = localStorage.getItem('sh1tshot-visited');
     const savedUserType = localStorage.getItem('sh1tshot-user-type') as UserType;
     
     if (hasVisited && savedUserType) {
+      // If user was previously a member but is no longer authenticated, show welcome screen
+      if (savedUserType === 'member' && !isAuthenticated) {
+        setCurrentScreen('welcome');
+        return;
+      }
+      
       setUserType(savedUserType);
       setCurrentScreen('start');
     }
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   useEffect(() => {
     // Check if device is mobile
@@ -71,6 +83,11 @@ function App() {
   }, []);
 
   const handleSelectUserType = (selectedUserType: UserType) => {
+    // If selecting member type but not authenticated, the WelcomeScreen will handle auth
+    if (selectedUserType === 'member' && !isAuthenticated) {
+      return; // Let WelcomeScreen handle the authentication flow
+    }
+
     setUserType(selectedUserType);
     localStorage.setItem('sh1tshot-visited', 'true');
     localStorage.setItem('sh1tshot-user-type', selectedUserType || '');
@@ -297,6 +314,25 @@ function App() {
       }
     };
   }, [currentScreen, gameStarted, isPaused, targets.length, crosshairState]);
+
+  // Show loading screen while authentication is being checked
+  if (authLoading) {
+    return (
+      <div className="game-container">
+        <div className="welcome-screen">
+          <div className="welcome-content">
+            <div className="welcome-header">
+              <div className="brand-logo">
+                <Target size={60} />
+              </div>
+              <h1 className="brand-title">SH!TSHOT</h1>
+              <p className="welcome-subtitle">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const renderCurrentScreen = () => {
     switch (currentScreen) {
