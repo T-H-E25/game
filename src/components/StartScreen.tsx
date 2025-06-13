@@ -15,11 +15,11 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
       <div className="start-content">
         <div className="game-logo">
           <Target size={40} />
-          <h1>NERF Target Challenge</h1>
+          <h1>SH!TSHOT Target Challenge</h1>
         </div>
         
         <p className="game-description">
-          Test your aim! Shoot the moving targets with your Nerf gun for maximum points.
+          Test your aim! Shoot the moving targets for maximum points.
           Be quick and accurate to achieve the highest score!
         </p>
         
@@ -75,7 +75,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         <div className="instructions">
           <h3>How to Play</h3>
           <ul>
-            <li>Point your Nerf gun at the screen and shoot at targets</li>
+            <li>Point and shoot at the targets on screen</li>
             <li>Hit the center bullseye for maximum points</li>
             <li>Miss penalties will reduce your score</li>
             <li>Try to hit as many targets as possible before time runs out</li>

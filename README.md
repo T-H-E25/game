@@ -1,6 +1,6 @@
-# game
+# SH!TSHOT Target Challenge
 
-A nerf shooting game.
+A fast-paced target shooting game.
 
 ## Table of Contents
 
