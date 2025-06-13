@@ -49,6 +49,59 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.user-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.free {
+  background-color: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+.status-badge.member {
+  background-color: rgba(230, 57, 70, 0.2);
+  color: #e63946;
+  border: 1px solid rgba(230, 57, 70, 0.3);
+}
+
+.change-user-type {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.375rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.change-user-type:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  transform: translateY(-1px);
+}
+
 .game-description {
   text-align: center;
   color: rgba(255, 255, 255, 0.9);
@@ -162,6 +215,16 @@
   .game-description {
     font-size: 0.8rem;
     margin-bottom: 1rem;
+  }
+
+  .user-status {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .change-user-type {
+    align-self: center;
   }
   
   .option-buttons {

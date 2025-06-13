@@ -2,12 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Target, Target3D } from './components/Target';
 import GameOverlay from './components/GameOverlay';
 import StartScreen from './components/StartScreen';
+import WelcomeScreen from './components/WelcomeScreen';
 import { useGameLogic } from './hooks/useGameLogic';
 import { useTargetSpawner } from './hooks/useTargetSpawner';
 import { useSoundEffects } from './hooks/useSoundEffects';
 import './App.css';
 
+type UserType = 'free' | 'member' | null;
+type AppScreen = 'welcome' | 'start' | 'game';
+
 function App() {
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>('welcome');
+  const [userType, setUserType] = useState<UserType>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [difficulty, setDifficulty] = useState('medium');
   const [gameMode, setGameMode] = useState('2d');
@@ -39,6 +45,17 @@ function App() {
   const { playShootSound, playHitSound, playMissSound } = useSoundEffects();
 
   useEffect(() => {
+    // Check if user has visited before
+    const hasVisited = localStorage.getItem('sh1tshot-visited');
+    const savedUserType = localStorage.getItem('sh1tshot-user-type') as UserType;
+    
+    if (hasVisited && savedUserType) {
+      setUserType(savedUserType);
+      setCurrentScreen('start');
+    }
+  }, []);
+
+  useEffect(() => {
     // Check if device is mobile
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768 || 
@@ -53,11 +70,19 @@ function App() {
     };
   }, []);
 
+  const handleSelectUserType = (selectedUserType: UserType) => {
+    setUserType(selectedUserType);
+    localStorage.setItem('sh1tshot-visited', 'true');
+    localStorage.setItem('sh1tshot-user-type', selectedUserType || '');
+    setCurrentScreen('start');
+  };
+
   const handleStartGame = (selectedDifficulty, selectedMode) => {
     setDifficulty(selectedDifficulty);
     setGameMode(selectedMode);
     startGame();
     setGameStarted(true);
+    setCurrentScreen('game');
   };
 
   // Optimized proximity checking with caching and throttling
@@ -249,16 +274,20 @@ function App() {
   const handleGameOver = () => {
     endGame();
     setGameStarted(false);
+    setCurrentScreen('start');
   };
 
   const handleQuitGame = () => {
     quitGame();
     setGameStarted(false);
+    setCurrentScreen('start');
   };
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    if (currentScreen === 'game') {
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    }
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
@@ -267,77 +296,91 @@ function App() {
         cancelAnimationFrame(proximityCheckRef.current);
       }
     };
-  }, [gameStarted, isPaused, targets.length, crosshairState]);
+  }, [currentScreen, gameStarted, isPaused, targets.length, crosshairState]);
+
+  const renderCurrentScreen = () => {
+    switch (currentScreen) {
+      case 'welcome':
+        return <WelcomeScreen onSelectUserType={handleSelectUserType} />;
+      
+      case 'start':
+        return <StartScreen onStartGame={handleStartGame} userType={userType} />;
+      
+      case 'game':
+        return (
+          <>
+            <div className="targets-container">
+              {targets.map(target => (
+                gameMode === '2d' ? (
+                  <Target 
+                    key={target.id} 
+                    id={target.id} 
+                    x={target.x} 
+                    y={target.y} 
+                    size={target.size} 
+                    speed={target.speed}
+                    isPaused={isPaused}
+                  />
+                ) : (
+                  <Target3D 
+                    key={target.id} 
+                    id={target.id} 
+                    x={target.x} 
+                    y={target.y} 
+                    z={target.z} 
+                    size={target.size} 
+                    speed={target.speed}
+                    isPaused={isPaused}
+                  />
+                )
+              ))}
+            </div>
+            
+            <GameOverlay 
+              score={score}
+              timeLeft={timeLeft}
+              hits={hits}
+              misses={misses}
+              accuracy={accuracy}
+              isPaused={isPaused}
+              onGameOver={handleGameOver}
+              onTogglePause={togglePause}
+              onQuitGame={handleQuitGame}
+            />
+            
+            <div 
+              className={`crosshair ${crosshairState}`}
+              style={{ 
+                left: `${mousePosition.x}px`, 
+                top: `${mousePosition.y}px` 
+              }}
+            ></div>
+            
+            {isMobile && (
+              <div className="mobile-controls">
+                <button 
+                  className="mobile-shoot-button"
+                  onTouchEnd={handleMobileShoot}
+                >
+                  FIRE
+                </button>
+              </div>
+            )}
+          </>
+        );
+      
+      default:
+        return null;
+    }
+  };
 
   return (
     <div 
-      className={`game-container ${gameStarted ? 'game-active' : ''}`}
-      onClick={handleShoot}
-      onTouchEnd={handleShoot}
+      className={`game-container ${currentScreen === 'game' ? 'game-active' : ''}`}
+      onClick={currentScreen === 'game' ? handleShoot : undefined}
+      onTouchEnd={currentScreen === 'game' ? handleShoot : undefined}
     >
-      {gameStarted ? (
-        <>
-          <div className="targets-container">
-            {targets.map(target => (
-              gameMode === '2d' ? (
-                <Target 
-                  key={target.id} 
-                  id={target.id} 
-                  x={target.x} 
-                  y={target.y} 
-                  size={target.size} 
-                  speed={target.speed}
-                  isPaused={isPaused}
-                />
-              ) : (
-                <Target3D 
-                  key={target.id} 
-                  id={target.id} 
-                  x={target.x} 
-                  y={target.y} 
-                  z={target.z} 
-                  size={target.size} 
-                  speed={target.speed}
-                  isPaused={isPaused}
-                />
-              )
-            ))}
-          </div>
-          
-          <GameOverlay 
-            score={score}
-            timeLeft={timeLeft}
-            hits={hits}
-            misses={misses}
-            accuracy={accuracy}
-            isPaused={isPaused}
-            onGameOver={handleGameOver}
-            onTogglePause={togglePause}
-            onQuitGame={handleQuitGame}
-          />
-          
-          <div 
-            className={`crosshair ${crosshairState}`}
-            style={{ 
-              left: `${mousePosition.x}px`, 
-              top: `${mousePosition.y}px` 
-            }}
-          ></div>
-          
-          {isMobile && (
-            <div className="mobile-controls">
-              <button 
-                className="mobile-shoot-button"
-                onTouchEnd={handleMobileShoot}
-              >
-                FIRE
-              </button>
-            </div>
-          )}
-        </>
-      ) : (
-        <StartScreen onStartGame={handleStartGame} />
-      )}
+      {renderCurrentScreen()}
     </div>
   );
 }

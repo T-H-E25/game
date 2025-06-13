@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { Target, Clock, Trophy } from 'lucide-react';
+import { Target, Clock, Trophy, Zap, Users, Home } from 'lucide-react';
 import './StartScreen.css';
 
 interface StartScreenProps {
   onStartGame: (difficulty: string, gameMode: string) => void;
+  userType?: 'free' | 'member' | null;
 }
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, userType }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState('medium');
   const [selectedMode, setSelectedMode] = useState('2d');
+
+  const handleBackToWelcome = () => {
+    localStorage.removeItem('sh1tshot-visited');
+    localStorage.removeItem('sh1tshot-user-type');
+    window.location.reload();
+  };
 
   return (
     <div className="start-screen">
@@ -17,6 +24,23 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
           <Target size={40} />
           <h1>SH!TSHOT Target Challenge</h1>
         </div>
+
+        {userType && (
+          <div className="user-status">
+            <div className={`status-badge ${userType}`}>
+              {userType === 'free' ? <Zap size={16} /> : <Users size={16} />}
+              <span>Playing as {userType === 'free' ? 'Free Player' : 'Member'}</span>
+            </div>
+            <button 
+              className="change-user-type"
+              onClick={handleBackToWelcome}
+              title="Change user type"
+            >
+              <Home size={16} />
+              Change Mode
+            </button>
+          </div>
+        )}
         
         <p className="game-description">
           Test your aim! Shoot the moving targets for maximum points.
