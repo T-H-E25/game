@@ -13,6 +13,7 @@ function App() {
   const [gameMode, setGameMode] = useState('2d');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  const [crosshairState, setCrosshairState] = useState('default'); // 'default', 'near-target', 'on-target'
   
   const {
     score,
@@ -54,16 +55,61 @@ function App() {
     setGameStarted(true);
   };
 
+  const checkCrosshairProximity = (x, y) => {
+    if (!gameStarted || isPaused || targets.length === 0) {
+      setCrosshairState('default');
+      return;
+    }
+
+    let closestDistance = Infinity;
+    let isOnTarget = false;
+
+    for (const target of targets) {
+      const targetElement = document.getElementById(`target-${target.id}`);
+      if (!targetElement) continue;
+      
+      const rect = targetElement.getBoundingClientRect();
+      const targetX = rect.left + rect.width / 2;
+      const targetY = rect.top + rect.height / 2;
+      const targetRadius = rect.width / 2;
+      
+      // Calculate distance from crosshair to target center
+      const distance = Math.sqrt(Math.pow(targetX - x, 2) + Math.pow(targetY - y, 2));
+      
+      // Check if crosshair is directly on target
+      if (distance <= targetRadius) {
+        isOnTarget = true;
+        break;
+      }
+      
+      // Track closest target for near-target detection
+      if (distance < closestDistance) {
+        closestDistance = distance;
+      }
+    }
+
+    if (isOnTarget) {
+      setCrosshairState('on-target');
+    } else if (closestDistance <= 80) { // Within 80px is considered "near"
+      setCrosshairState('near-target');
+    } else {
+      setCrosshairState('default');
+    }
+  };
+
   const handleMouseMove = (e) => {
-    setMousePosition({ x: e.clientX, y: e.clientY });
+    const x = e.clientX;
+    const y = e.clientY;
+    setMousePosition({ x, y });
+    checkCrosshairProximity(x, y);
   };
 
   const handleTouchMove = (e) => {
     if (e.touches && e.touches[0]) {
-      setMousePosition({ 
-        x: e.touches[0].clientX, 
-        y: e.touches[0].clientY 
-      });
+      const x = e.touches[0].clientX;
+      const y = e.touches[0].clientY;
+      setMousePosition({ x, y });
+      checkCrosshairProximity(x, y);
       e.preventDefault();
     }
   };
@@ -182,7 +228,7 @@ function App() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('touchmove', handleTouchMove);
     };
-  }, []);
+  }, [gameStarted, isPaused, targets]);
 
   return (
     <div 
@@ -234,7 +280,7 @@ function App() {
           />
           
           <div 
-            className="crosshair" 
+            className={`crosshair ${crosshairState}`}
             style={{ 
               left: `${mousePosition.x}px`, 
               top: `${mousePosition.y}px` 
