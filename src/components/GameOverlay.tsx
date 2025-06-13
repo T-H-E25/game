@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Timer, Target, Trophy, X } from 'lucide-react';
+import { Timer, Target, Trophy, X, Pause, Play, Home } from 'lucide-react';
 import './GameOverlay.css';
 
 interface GameOverlayProps {
@@ -8,7 +8,10 @@ interface GameOverlayProps {
   hits: number;
   misses: number;
   accuracy: number;
+  isPaused: boolean;
   onGameOver: () => void;
+  onTogglePause: () => void;
+  onQuitGame: () => void;
 }
 
 const GameOverlay: React.FC<GameOverlayProps> = ({ 
@@ -17,7 +20,10 @@ const GameOverlay: React.FC<GameOverlayProps> = ({
   hits, 
   misses, 
   accuracy, 
-  onGameOver 
+  isPaused,
+  onGameOver,
+  onTogglePause,
+  onQuitGame
 }) => {
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -58,6 +64,41 @@ const GameOverlay: React.FC<GameOverlayProps> = ({
           <span className="stat-value">{accuracy}%</span>
         </div>
       </div>
+      
+      <div className="game-controls">
+        <button 
+          className="control-button pause" 
+          onClick={onTogglePause}
+          title={isPaused ? "Resume" : "Pause"}
+        >
+          {isPaused ? <Play size={20} /> : <Pause size={20} />}
+        </button>
+        <button 
+          className="control-button quit" 
+          onClick={onQuitGame}
+          title="Quit Game"
+        >
+          <Home size={20} />
+        </button>
+      </div>
+      
+      {isPaused && (
+        <div className="pause-overlay">
+          <div className="pause-content">
+            <h2>Game Paused</h2>
+            <div className="pause-buttons">
+              <button className="pause-button resume" onClick={onTogglePause}>
+                <Play size={18} style={{ marginRight: '0.5rem' }} />
+                Resume Game
+              </button>
+              <button className="pause-button quit" onClick={onQuitGame}>
+                <Home size={18} style={{ marginRight: '0.5rem' }} />
+                Quit to Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {timeLeft <= 0 && (
         <div className="game-over-screen">

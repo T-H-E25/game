@@ -7,6 +7,7 @@ export const useGameLogic = (difficulty: string) => {
   const [accuracy, setAccuracy] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isGameActive, setIsGameActive] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   
   // Set game parameters based on difficulty
   const getGameParameters = () => {
@@ -43,24 +44,39 @@ export const useGameLogic = (difficulty: string) => {
     setAccuracy(0);
     setTimeLeft(gameDuration);
     setIsGameActive(true);
+    setIsPaused(false);
   }, [gameDuration]);
   
   // End the game
   const endGame = useCallback(() => {
     setIsGameActive(false);
+    setIsPaused(false);
+  }, []);
+  
+  // Pause/Resume the game
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => !prev);
+  }, []);
+  
+  // Quit the game
+  const quitGame = useCallback(() => {
+    setIsGameActive(false);
+    setIsPaused(false);
   }, []);
   
   // Register a hit
   const registerHit = useCallback(() => {
+    if (isPaused) return;
     setScore(prev => prev + hitPoints);
     setHits(prev => prev + 1);
-  }, [hitPoints]);
+  }, [hitPoints, isPaused]);
   
   // Register a miss
   const registerMiss = useCallback(() => {
+    if (isPaused) return;
     setScore(prev => Math.max(0, prev + missPoints));
     setMisses(prev => prev + 1);
-  }, [missPoints]);
+  }, [missPoints, isPaused]);
   
   // Update accuracy
   useEffect(() => {
@@ -75,7 +91,7 @@ export const useGameLogic = (difficulty: string) => {
   useEffect(() => {
     let timer: number;
     
-    if (isGameActive && timeLeft > 0) {
+    if (isGameActive && timeLeft > 0 && !isPaused) {
       timer = window.setInterval(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
@@ -86,7 +102,7 @@ export const useGameLogic = (difficulty: string) => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isGameActive, timeLeft, endGame]);
+  }, [isGameActive, timeLeft, isPaused, endGame]);
   
   return {
     score,
@@ -94,8 +110,11 @@ export const useGameLogic = (difficulty: string) => {
     hits,
     misses,
     accuracy,
+    isPaused,
     startGame,
     endGame,
+    togglePause,
+    quitGame,
     registerHit,
     registerMiss,
   };

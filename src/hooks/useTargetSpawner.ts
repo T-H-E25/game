@@ -9,7 +9,7 @@ interface Target {
   speed: number;
 }
 
-export const useTargetSpawner = (difficulty: string, isGameActive: boolean) => {
+export const useTargetSpawner = (difficulty: string, isGameActive: boolean, isPaused: boolean = false) => {
   const [targets, setTargets] = useState<Target[]>([]);
   
   // Get spawn parameters based on difficulty
@@ -74,10 +74,10 @@ export const useTargetSpawner = (difficulty: string, isGameActive: boolean) => {
   
   // Spawn a new target
   const spawnTarget = useCallback(() => {
-    if (targets.length < maxTargets) {
+    if (targets.length < maxTargets && !isPaused) {
       setTargets(prev => [...prev, generateTarget()]);
     }
-  }, [targets.length, maxTargets, generateTarget]);
+  }, [targets.length, maxTargets, generateTarget, isPaused]);
   
   // Remove a target
   const removeTarget = useCallback((id: string) => {
@@ -88,7 +88,7 @@ export const useTargetSpawner = (difficulty: string, isGameActive: boolean) => {
   useEffect(() => {
     let spawnTimer: number;
     
-    if (isGameActive) {
+    if (isGameActive && !isPaused) {
       // Spawn initial targets
       if (targets.length === 0) {
         const initialTargets = Array(Math.min(2, maxTargets))
@@ -103,7 +103,7 @@ export const useTargetSpawner = (difficulty: string, isGameActive: boolean) => {
           spawnTarget();
         }
       }, spawnInterval);
-    } else {
+    } else if (!isGameActive) {
       // Clear targets when game is not active
       setTargets([]);
     }
@@ -111,7 +111,7 @@ export const useTargetSpawner = (difficulty: string, isGameActive: boolean) => {
     return () => {
       if (spawnTimer) clearInterval(spawnTimer);
     };
-  }, [isGameActive, targets.length, maxTargets, spawnInterval, generateTarget, spawnTarget]);
+  }, [isGameActive, isPaused, targets.length, maxTargets, spawnInterval, generateTarget, spawnTarget]);
   
   return {
     targets,

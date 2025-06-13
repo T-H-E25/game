@@ -20,13 +20,16 @@ function App() {
     hits,
     misses,
     accuracy,
+    isPaused,
     startGame,
     endGame,
+    togglePause,
+    quitGame,
     registerHit,
     registerMiss,
   } = useGameLogic(difficulty);
 
-  const { targets, spawnTarget, removeTarget } = useTargetSpawner(difficulty, gameStarted);
+  const { targets, spawnTarget, removeTarget } = useTargetSpawner(difficulty, gameStarted, isPaused);
   const { playShootSound, playHitSound, playMissSound } = useSoundEffects();
 
   useEffect(() => {
@@ -66,7 +69,7 @@ function App() {
   };
 
   const handleShoot = (e) => {
-    if (!gameStarted || timeLeft <= 0) return;
+    if (!gameStarted || timeLeft <= 0 || isPaused) return;
     
     playShootSound();
     
@@ -122,7 +125,7 @@ function App() {
   };
 
   const handleMobileShoot = () => {
-    if (!gameStarted || timeLeft <= 0) return;
+    if (!gameStarted || timeLeft <= 0 || isPaused) return;
     
     playShootSound();
     
@@ -166,6 +169,11 @@ function App() {
     setGameStarted(false);
   };
 
+  const handleQuitGame = () => {
+    quitGame();
+    setGameStarted(false);
+  };
+
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -196,6 +204,7 @@ function App() {
                   y={target.y} 
                   size={target.size} 
                   speed={target.speed}
+                  isPaused={isPaused}
                 />
               ) : (
                 <Target3D 
@@ -206,6 +215,7 @@ function App() {
                   z={target.z} 
                   size={target.size} 
                   speed={target.speed}
+                  isPaused={isPaused}
                 />
               )
             ))}
@@ -217,7 +227,10 @@ function App() {
             hits={hits}
             misses={misses}
             accuracy={accuracy}
+            isPaused={isPaused}
             onGameOver={handleGameOver}
+            onTogglePause={togglePause}
+            onQuitGame={handleQuitGame}
           />
           
           <div 

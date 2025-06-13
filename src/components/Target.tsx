@@ -7,18 +7,26 @@ interface TargetProps {
   y: number;
   size: number;
   speed: number;
+  isPaused?: boolean;
 }
 
 interface Target3DProps extends TargetProps {
   z: number;
 }
 
-export const Target: React.FC<TargetProps> = ({ id, x, y, size, speed }) => {
+export const Target: React.FC<TargetProps> = ({ id, x, y, size, speed, isPaused = false }) => {
   const [position, setPosition] = useState({ x, y });
   const [direction, setDirection] = useState({ x: Math.random() > 0.5 ? 1 : -1, y: Math.random() > 0.5 ? 1 : -1 });
   const requestRef = useRef<number>();
 
   useEffect(() => {
+    if (isPaused) {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
+      return;
+    }
+
     const moveTarget = () => {
       setPosition(prev => {
         const newX = prev.x + direction.x * speed;
@@ -60,7 +68,7 @@ export const Target: React.FC<TargetProps> = ({ id, x, y, size, speed }) => {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [direction, size, speed]);
+  }, [direction, size, speed, isPaused]);
 
   return (
     <div
@@ -81,7 +89,7 @@ export const Target: React.FC<TargetProps> = ({ id, x, y, size, speed }) => {
   );
 };
 
-export const Target3D: React.FC<Target3DProps> = ({ id, x, y, z, size, speed }) => {
+export const Target3D: React.FC<Target3DProps> = ({ id, x, y, z, size, speed, isPaused = false }) => {
   const [position, setPosition] = useState({ x, y, z });
   const [direction, setDirection] = useState({ 
     x: Math.random() > 0.5 ? 1 : -1, 
@@ -94,6 +102,13 @@ export const Target3D: React.FC<Target3DProps> = ({ id, x, y, z, size, speed }) 
   const visualSize = size * (1 - position.z / 1000);
   
   useEffect(() => {
+    if (isPaused) {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
+      return;
+    }
+
     const moveTarget = () => {
       setPosition(prev => {
         const newX = prev.x + direction.x * speed;
@@ -142,7 +157,7 @@ export const Target3D: React.FC<Target3DProps> = ({ id, x, y, z, size, speed }) 
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [direction, visualSize, speed]);
+  }, [direction, visualSize, speed, isPaused]);
 
   // Calculate opacity based on z position
   const opacity = 1 - (position.z / 1000);
