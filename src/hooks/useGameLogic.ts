@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from './useAuth';
+import { useGameData } from './useGameData';
 
 export const useGameLogic = (difficulty: string) => {
   const [score, setScore] = useState(0);
@@ -8,6 +10,10 @@ export const useGameLogic = (difficulty: string) => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isGameActive, setIsGameActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
+  
+  const { isAuthenticated } = useAuth();
+  const { submitGameSession } = useGameData();
   
   // Set game parameters based on difficulty
   const getGameParameters = () => {
@@ -37,7 +43,7 @@ export const useGameLogic = (difficulty: string) => {
   const { gameDuration, hitPoints, missPoints } = getGameParameters();
   
   // Start the game
-  const startGame = useCallback(() => {
+  const startGame = useCallback((gameMode: string = '2d') => {
     setScore(0);
     setHits(0);
     setMisses(0);
@@ -45,13 +51,39 @@ export const useGameLogic = (difficulty: string) => {
     setTimeLeft(gameDuration);
     setIsGameActive(true);
     setIsPaused(false);
+    setGameStartTime(new Date());
   }, [gameDuration]);
   
   // End the game
-  const endGame = useCallback(() => {
+  const endGame = useCallback(async (gameMode: string = '2d') => {
     setIsGameActive(false);
     setIsPaused(false);
-  }, []);
+    
+    // Submit game session for authenticated users
+    if (isAuthenticated && gameStartTime) {
+      try {
+        const endTime = new Date();
+        const durationSeconds = Math.round((endTime.getTime() - gameStartTime.getTime()) / 1000);
+        
+        await submitGameSession({
+          score,
+          hits,
+          misses,
+          accuracy,
+          difficulty,
+          game_mode: gameMode,
+          duration_seconds: durationSeconds,
+          start_time: gameStartTime.toISOString(),
+          end_time: endTime.toISOString(),
+        });
+        
+        console.log('Game session submitted successfully');
+      } catch (error) {
+        console.error('Failed to submit game session:', error);
+        // Don't show error to user, just log it
+      }
+    }
+  }, [isAuthenticated, gameStartTime, score, hits, misses, accuracy, difficulty, submitGameSession]);
   
   // Pause/Resume the game
   const togglePause = useCallback(() => {
@@ -96,13 +128,13 @@ export const useGameLogic = (difficulty: string) => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && isGameActive) {
-      endGame();
+      // Don't automatically end here - let the component handle it
     }
     
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isGameActive, timeLeft, isPaused, endGame]);
+  }, [isGameActive, timeLeft, isPaused]);
   
   return {
     score,

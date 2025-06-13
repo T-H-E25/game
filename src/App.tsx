@@ -97,7 +97,7 @@ function App() {
   const handleStartGame = (selectedDifficulty, selectedMode) => {
     setDifficulty(selectedDifficulty);
     setGameMode(selectedMode);
-    startGame();
+    startGame(selectedMode);
     setGameStarted(true);
     setCurrentScreen('game');
   };
@@ -288,8 +288,8 @@ function App() {
     }
   };
 
-  const handleGameOver = () => {
-    endGame();
+  const handleGameOver = async () => {
+    await endGame(gameMode);
     setGameStarted(false);
     setCurrentScreen('start');
   };
