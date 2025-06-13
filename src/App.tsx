@@ -15,6 +15,11 @@ function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [crosshairState, setCrosshairState] = useState('default'); // 'default', 'near-target', 'on-target'
   
+  // Use refs for performance optimization
+  const proximityCheckRef = useRef<number>();
+  const targetCacheRef = useRef<Array<{id: string, x: number, y: number, radius: number}>>([]);
+  const lastProximityCheck = useRef<number>(0);
+  
   const {
     score,
     timeLeft,
@@ -55,29 +60,51 @@ function App() {
     setGameStarted(true);
   };
 
-  const checkCrosshairProximity = (x, y) => {
+  // Optimized proximity checking with caching and throttling
+  const updateTargetCache = () => {
+    const cache = [];
+    for (const target of targets) {
+      const targetElement = document.getElementById(`target-${target.id}`);
+      if (targetElement) {
+        const rect = targetElement.getBoundingClientRect();
+        cache.push({
+          id: target.id,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          radius: rect.width / 2
+        });
+      }
+    }
+    targetCacheRef.current = cache;
+  };
+
+  const checkCrosshairProximityOptimized = (x, y) => {
     if (!gameStarted || isPaused || targets.length === 0) {
       setCrosshairState('default');
       return;
     }
 
+    // Throttle proximity checks to every 16ms (60fps)
+    const now = performance.now();
+    if (now - lastProximityCheck.current < 16) {
+      return;
+    }
+    lastProximityCheck.current = now;
+
+    // Update target cache
+    updateTargetCache();
+
     let closestDistance = Infinity;
     let isOnTarget = false;
 
-    for (const target of targets) {
-      const targetElement = document.getElementById(`target-${target.id}`);
-      if (!targetElement) continue;
-      
-      const rect = targetElement.getBoundingClientRect();
-      const targetX = rect.left + rect.width / 2;
-      const targetY = rect.top + rect.height / 2;
-      const targetRadius = rect.width / 2;
-      
+    for (const cachedTarget of targetCacheRef.current) {
       // Calculate distance from crosshair to target center
-      const distance = Math.sqrt(Math.pow(targetX - x, 2) + Math.pow(targetY - y, 2));
+      const distance = Math.sqrt(
+        Math.pow(cachedTarget.x - x, 2) + Math.pow(cachedTarget.y - y, 2)
+      );
       
       // Check if crosshair is directly on target
-      if (distance <= targetRadius) {
+      if (distance <= cachedTarget.radius) {
         isOnTarget = true;
         break;
       }
@@ -88,28 +115,47 @@ function App() {
       }
     }
 
-    if (isOnTarget) {
-      setCrosshairState('on-target');
-    } else if (closestDistance <= 80) { // Within 80px is considered "near"
-      setCrosshairState('near-target');
-    } else {
-      setCrosshairState('default');
+    // Update crosshair state only if changed
+    const newState = isOnTarget ? 'on-target' : 
+                     closestDistance <= 80 ? 'near-target' : 'default';
+    
+    if (newState !== crosshairState) {
+      setCrosshairState(newState);
     }
   };
 
   const handleMouseMove = (e) => {
     const x = e.clientX;
     const y = e.clientY;
+    
+    // Update position immediately for smooth movement
     setMousePosition({ x, y });
-    checkCrosshairProximity(x, y);
+    
+    // Schedule proximity check for next frame
+    if (proximityCheckRef.current) {
+      cancelAnimationFrame(proximityCheckRef.current);
+    }
+    proximityCheckRef.current = requestAnimationFrame(() => {
+      checkCrosshairProximityOptimized(x, y);
+    });
   };
 
   const handleTouchMove = (e) => {
     if (e.touches && e.touches[0]) {
       const x = e.touches[0].clientX;
       const y = e.touches[0].clientY;
+      
+      // Update position immediately for smooth movement
       setMousePosition({ x, y });
-      checkCrosshairProximity(x, y);
+      
+      // Schedule proximity check for next frame
+      if (proximityCheckRef.current) {
+        cancelAnimationFrame(proximityCheckRef.current);
+      }
+      proximityCheckRef.current = requestAnimationFrame(() => {
+        checkCrosshairProximityOptimized(x, y);
+      });
+      
       e.preventDefault();
     }
   };
@@ -139,26 +185,21 @@ function App() {
       y = e.clientY;
     }
     
-    // Check if any target was hit
+    // Check if any target was hit using cached positions
     let hit = false;
     
-    for (const target of targets) {
-      const targetElement = document.getElementById(`target-${target.id}`);
-      if (!targetElement) continue;
-      
-      const rect = targetElement.getBoundingClientRect();
-      const targetX = rect.left + rect.width / 2;
-      const targetY = rect.top + rect.height / 2;
-      
+    for (const cachedTarget of targetCacheRef.current) {
       // Calculate distance from click to target center
-      const distance = Math.sqrt(Math.pow(targetX - x, 2) + Math.pow(targetY - y, 2));
+      const distance = Math.sqrt(
+        Math.pow(cachedTarget.x - x, 2) + Math.pow(cachedTarget.y - y, 2)
+      );
       
       // Check if click is within target radius
-      if (distance <= rect.width / 2) {
+      if (distance <= cachedTarget.radius) {
         hit = true;
         playHitSound();
         registerHit();
-        removeTarget(target.id);
+        removeTarget(cachedTarget.id);
         spawnTarget();
         break;
       }
@@ -179,26 +220,21 @@ function App() {
     const x = mousePosition.x;
     const y = mousePosition.y;
     
-    // Check if any target was hit
+    // Check if any target was hit using cached positions
     let hit = false;
     
-    for (const target of targets) {
-      const targetElement = document.getElementById(`target-${target.id}`);
-      if (!targetElement) continue;
-      
-      const rect = targetElement.getBoundingClientRect();
-      const targetX = rect.left + rect.width / 2;
-      const targetY = rect.top + rect.height / 2;
-      
+    for (const cachedTarget of targetCacheRef.current) {
       // Calculate distance from current position to target center
-      const distance = Math.sqrt(Math.pow(targetX - x, 2) + Math.pow(targetY - y, 2));
+      const distance = Math.sqrt(
+        Math.pow(cachedTarget.x - x, 2) + Math.pow(cachedTarget.y - y, 2)
+      );
       
       // Check if position is within target radius
-      if (distance <= rect.width / 2) {
+      if (distance <= cachedTarget.radius) {
         hit = true;
         playHitSound();
         registerHit();
-        removeTarget(target.id);
+        removeTarget(cachedTarget.id);
         spawnTarget();
         break;
       }
@@ -221,22 +257,23 @@ function App() {
   };
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('touchmove', handleTouchMove);
+      if (proximityCheckRef.current) {
+        cancelAnimationFrame(proximityCheckRef.current);
+      }
     };
-  }, [gameStarted, isPaused, targets]);
+  }, [gameStarted, isPaused, targets.length, crosshairState]);
 
   return (
     <div 
       className={`game-container ${gameStarted ? 'game-active' : ''}`}
       onClick={handleShoot}
       onTouchEnd={handleShoot}
-      onMouseMove={handleMouseMove}
-      onTouchMove={handleTouchMove}
     >
       {gameStarted ? (
         <>
