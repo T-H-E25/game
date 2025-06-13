@@ -29,7 +29,7 @@ function App() {
     registerMiss,
   } = useGameLogic(difficulty);
 
-  const { targets, spawnTarget, removeTarget } = useTargetSpawner(difficulty, gameStarted, isPaused);
+  const { targets, spawnTarget, removeTarget } = useTargetSpawner(difficulty, gameStarted, isPaused, gameMode);
   const { playShootSound, playHitSound, playMissSound } = useSoundEffects();
 
   useEffect(() => {

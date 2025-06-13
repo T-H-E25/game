@@ -9,7 +9,7 @@ interface Target {
   speed: number;
 }
 
-export const useTargetSpawner = (difficulty: string, isGameActive: boolean, isPaused: boolean = false) => {
+export const useTargetSpawner = (difficulty: string, isGameActive: boolean, isPaused: boolean = false, gameMode: string = '2d') => {
   const [targets, setTargets] = useState<Target[]>([]);
   
   // Get spawn parameters based on difficulty
@@ -45,7 +45,13 @@ export const useTargetSpawner = (difficulty: string, isGameActive: boolean, isPa
   
   // Generate a random target
   const generateTarget = useCallback((): Target => {
-    const size = Math.floor(Math.random() * (targetSize.max - targetSize.min + 1)) + targetSize.min;
+    let size = Math.floor(Math.random() * (targetSize.max - targetSize.min + 1)) + targetSize.min;
+    
+    // Make 3D targets 10% larger to compensate for perspective scaling
+    if (gameMode === '3d') {
+      size = Math.floor(size * 1.1);
+    }
+    
     const speed = Math.random() * (targetSpeed.max - targetSpeed.min) + targetSpeed.min;
     
     // Calculate position with padding to avoid edges and ensure targets stay within viewport
@@ -70,7 +76,7 @@ export const useTargetSpawner = (difficulty: string, isGameActive: boolean, isPa
       size,
       speed,
     };
-  }, [targetSize, targetSpeed]);
+  }, [targetSize, targetSpeed, gameMode]);
   
   // Spawn a new target
   const spawnTarget = useCallback(() => {
