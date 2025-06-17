@@ -64,10 +64,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
           return false;
         }
 
-        // Strong password validation
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
-        if (!passwordRegex.test(formData.password)) {
-          setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
+        // For signup, use simpler password requirements
+        if (formData.password.length < 8) {
+          setError('Password must be at least 8 characters long');
           return false;
         }
       }
@@ -79,9 +78,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
   const handleGoogleSignIn = async () => {
     try {
       clearMessages();
+      console.log('Starting Google sign in...');
       await signInWithGoogle();
       onClose();
     } catch (err: any) {
+      console.error('Google sign in error:', err);
       setError(err.message || 'Failed to sign in with Google');
     }
   };
@@ -96,29 +97,50 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
 
     try {
       if (mode === 'signin') {
-        await signInWithEmail(formData.email, formData.password);
-        onClose();
-      } else if (mode === 'signup') {
-        const result = await signUpWithEmail(formData.email, formData.password, formData.displayName);
+        console.log('Attempting sign in...');
+        const result = await signInWithEmail(formData.email, formData.password);
         if (result?.user) {
-          setSuccess('Account created successfully! Please check your email to verify your account.');
-          setMode('signin');
+          console.log('Sign in successful, closing modal');
+          onClose();
+        }
+      } else if (mode === 'signup') {
+        console.log('Attempting sign up...');
+        const result = await signUpWithEmail(formData.email, formData.password, formData.displayName);
+        
+        if (result?.user) {
+          // Check if email confirmation is required
+          if (!result.session) {
+            setSuccess('Account created! Please check your email to verify your account before signing in.');
+            setMode('signin');
+          } else {
+            // User is immediately signed in (email confirmation disabled)
+            setSuccess('Account created successfully! You are now signed in.');
+            setTimeout(() => {
+              onClose();
+            }, 1500);
+          }
         }
       } else if (mode === 'reset') {
+        console.log('Attempting password reset...');
         await resetPassword(formData.email);
         setSuccess('Password reset link sent to your email!');
         setMode('signin');
       }
     } catch (err: any) {
+      console.error('Auth error:', err);
       let errorMessage = err.message || 'An error occurred';
       
       // Handle specific Supabase errors
       if (err.message?.includes('Invalid login credentials')) {
         errorMessage = 'Invalid email or password';
-      } else if (err.message?.includes('Email already registered')) {
-        errorMessage = 'An account with this email already exists';
+      } else if (err.message?.includes('User already registered')) {
+        errorMessage = 'An account with this email already exists. Try signing in instead.';
+      } else if (err.message?.includes('Email not confirmed')) {
+        errorMessage = 'Please check your email and click the confirmation link before signing in.';
       } else if (err.message?.includes('weak_password')) {
         errorMessage = 'Password is too weak. Please choose a stronger password';
+      } else if (err.message?.includes('signup_disabled')) {
+        errorMessage = 'New signups are currently disabled. Please contact support.';
       }
       
       setError(errorMessage);
