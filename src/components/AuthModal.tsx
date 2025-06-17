@@ -75,10 +75,49 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
     return true;
   };
 
+  const testSupabaseConnection = async () => {
+    console.log('Testing Supabase connection...');
+    console.log('Environment variables check:');
+    console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Missing');
+    console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Missing');
+    
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      setError('Supabase configuration is missing. Please check your .env file.');
+      return false;
+    }
+
+    try {
+      // Test basic connection to Supabase
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+        method: 'GET',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error('Supabase connection test failed:', response.status, response.statusText);
+        setError(`Cannot connect to Supabase (${response.status}). Please check your credentials.`);
+        return false;
+      }
+
+      console.log('Supabase connection test successful');
+      return true;
+    } catch (err) {
+      console.error('Network error connecting to Supabase:', err);
+      setError('Network error: Cannot reach Supabase. Check your internet connection and URL.');
+      return false;
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       clearMessages();
       console.log('Starting Google sign in...');
+      
+      if (!(await testSupabaseConnection())) return;
+      
       await signInWithGoogle();
       onClose();
     } catch (err: any) {
@@ -96,6 +135,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
     clearMessages();
 
     try {
+      // Test connection first
+      if (!(await testSupabaseConnection())) {
+        setIsSubmitting(false);
+        return;
+      }
+
       if (mode === 'signin') {
         console.log('Attempting sign in...');
         const result = await signInWithEmail(formData.email, formData.password);
@@ -130,8 +175,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
       console.error('Auth error:', err);
       let errorMessage = err.message || 'An error occurred';
       
-      // Handle specific Supabase errors
-      if (err.message?.includes('Invalid login credentials')) {
+      // Handle specific errors
+      if (err.message?.includes('fetch')) {
+        errorMessage = 'Connection failed. Please check your internet connection and try again.';
+      } else if (err.message?.includes('Invalid login credentials')) {
         errorMessage = 'Invalid email or password';
       } else if (err.message?.includes('User already registered')) {
         errorMessage = 'An account with this email already exists. Try signing in instead.';
